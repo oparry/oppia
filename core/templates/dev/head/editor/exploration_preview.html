@@ -1,10 +1,13 @@
 <div ng-controller="ExplorationPreview">
   <div ng-if="isExplorationPopulated">
+    <div ng-if="previewWarning">
+      <div class="oppia-preview-state-warning"><[previewWarning]></div>
+    </div>
     <conversation-skin></conversation-skin>
   </div>
 
   <!-- Developers: set ng-show="true" to see a parameter debug log. -->
-  <div ng-show="false">
+  <div ng-show="true">
     <h4><strong>Parameter values</strong></h4>
     <table>
       <tr ng-repeat="(paramName, paramValue) in allParams">
@@ -13,4 +16,24 @@
       </tr>
     </table>
   </div>
+
 </div>
+
+<style>
+  .oppia-preview-state-warning {
+    position: absolute;
+    top: 63px;
+    left: 6px;
+    z-index: 1060;
+    display: block;
+    max-width: 296px;
+    padding: 3px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: left;
+    white-space: normal;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+</style>

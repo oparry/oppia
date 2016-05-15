@@ -18,29 +18,57 @@
  */
 
 oppia.controller('ExplorationPreview', [
-  '$scope', '$timeout', 'LearnerParamsService',
+  '$scope', '$timeout', 'LearnerParamsService', '$modal',
   'explorationData', 'editorContextService',
   'explorationStatesService', 'explorationInitStateNameService',
   'explorationParamSpecsService', 'explorationTitleService',
   'explorationCategoryService', 'explorationParamChangesService',
-  'explorationGadgetsService', 'oppiaPlayerService',
+  'explorationGadgetsService', 'oppiaPlayerService', 'parameterMetadataService',
   function(
-      $scope, $timeout, LearnerParamsService,
+      $scope, $timeout, LearnerParamsService, $modal,
       explorationData, editorContextService,
       explorationStatesService, explorationInitStateNameService,
       explorationParamSpecsService, explorationTitleService,
       explorationCategoryService, explorationParamChangesService,
-      explorationGadgetsService, oppiaPlayerService) {
+      explorationGadgetsService, oppiaPlayerService, parameterMetadataService) {
     $scope.isExplorationPopulated = false;
     explorationData.getData().then(function() {
       var initStateNameForPreview = editorContextService.getActiveStateName();
-      // TODO(oparry): This conditional is a temporary fix meant to prevent
-      // starting a preview from the middle of an exploration if the exploration
-      // makes use of parameters. Once manual entry of parameter values is
-      // supported, it can be removed.
-      if (!angular.equals({}, explorationParamSpecsService.savedMemento)) {
-        initStateNameForPreview = explorationInitStateNameService.savedMemento;
-      }
+
+      // Show a warning message if preview doesn't start from the first state
+      if (initStateNameForPreview !==
+          explorationInitStateNameService.savedMemento) {
+        $scope.previewWarning = 'Preview started from \"' +
+          initStateNameForPreview + '\"';
+
+        // Use parameterMetadataService to identify all of
+        // the parameters that need to be set in this state
+        var getParametersToSet = function(stateNames) {
+          var unsetParametersInfo =
+            parameterMetadataService.getUnsetParametersInfo(stateNames);
+          var parametersToSet = [];
+          for (var i = 0; i < unsetParametersInfo.length; i++) {
+            parametersToSet.push({
+              name: unsetParametersInfo[i].paramName,
+              value: null
+            });
+          }
+          return parametersToSet;
+        };
+
+        $scope.loadPreviewState(initStateNameForPreview);
+        var parametersToSet = getParametersToSet([initStateNameForPreview]);
+        if (parametersToSet) {
+          $scope.showSetUndefinedParamsModal(parametersToSet, function() {
+            $scope.loadPreviewState(initStateNameForPreview);
+          });
+        };
+      } else {
+        $scope.previewWarning = '';
+      };
+    });
+
+    $scope.loadPreviewState = function(stateName) {
       // There is a race condition here that can sometimes occur when the editor
       // preview tab is loaded: the exploration in PlayerServices is populated,
       // but with null values for the category, init_state_name, etc. fields,
@@ -49,10 +77,11 @@ oppia.controller('ExplorationPreview', [
       // TODO(sll): Refactor the editor frontend to create a single place for
       // obtaining the current version of the exploration, so that the use of
       // $timeout isn't necessary.
+      console.log('Loading preview state ' + stateName);
       $timeout(function() {
         oppiaPlayerService.populateExploration({
           category: explorationCategoryService.savedMemento,
-          init_state_name: initStateNameForPreview,
+          init_state_name: stateName,
           param_changes: explorationParamChangesService.savedMemento,
           param_specs: explorationParamSpecsService.savedMemento,
           states: explorationStatesService.getStates(),
@@ -62,12 +91,46 @@ oppia.controller('ExplorationPreview', [
           }
         });
         $scope.isExplorationPopulated = true;
-      }, 200);
+      }, 600);
+      console.log('State loaded.');
+    };
+
+    $scope.$on('updateActiveState', function(evt, stateName) {
+      editorContextService.setActiveStateName(stateName);
     });
 
     $scope.allParams = {};
     $scope.$on('playerStateChange', function() {
       $scope.allParams = LearnerParamsService.getAllParams();
     });
+
+    $scope.showSetUndefinedParamsModal = function(parametersToSet, callback) {
+      var modalInstance = $modal.open({
+        templateUrl: 'modals/previewParams',
+        backdrop: 'static',
+        controller: [
+          '$scope', '$modalInstance', function($scope, $modalInstance) {
+            $scope.parametersToSet = parametersToSet;
+            $scope.previewParamModalOk = $modalInstance.close;
+            $scope.previewParamModalCancel = function() {
+              $modalInstance.dismiss('cancel');
+            };
+          }
+        ],
+        windowClass: 'oppia-preview-params-modal'
+      }).result.then(function() {
+        for (var i = 0; i < parametersToSet.length; i++) {
+          console.log('Setting param ' + parametersToSet[i].name);
+          LearnerParamsService.setValue(parametersToSet[i].name,
+                                        parametersToSet[i].value);
+          console.log(parametersToSet[i].name + ' set  to ' +
+                      LearnerParamsService.getValue(parametersToSet[i].name));
+        }
+        $scope.allParams = LearnerParamsService.getAllParams();
+        if (callback) {
+          callback();
+        }
+      });
+    };
   }
 ]);

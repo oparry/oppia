@@ -454,6 +454,7 @@
   {% include 'components/outcome_destination_editor_directive.html' %}
   {% include 'components/outcome_feedback_editor_directive.html' %}
   {% include 'components/param_changes_editor_directive.html' %}
+  {% include 'components/preview_params_modal_directive.html' %}
   {% include 'components/profile_link_text_directive.html' %}
   {% include 'components/response_header_directive.html' %}
   {% include 'components/rule_editor_directive.html' %}
@@ -496,6 +497,7 @@
     {{ include_js_file('components/StateGraphLayoutService.js') }}
     {{ include_js_file('components/StateGraphVizDirective.js') }}
     {{ include_js_file('components/ValueGeneratorEditorDirective.js') }}
+
 
     {{ value_generators_js }}
     {{ include_js_file('services/explorationServices.js') }}
